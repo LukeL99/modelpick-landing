@@ -16,102 +16,114 @@ const TEXT = '#F5F5F5'
 const TEXT_SEC = '#A1A1AA'
 const TEXT_MUTED = '#71717A'
 const SUCCESS = '#22C55E'
+const DANGER = '#EF4444'
 
 const MODELS_DATA = [
-  { name: 'Claude Sonnet 4.5', provider: 'Anthropic', accuracy: 96, latency: 1.6, cost: '$0.0045', score: 94.2 },
-  { name: 'GPT-4o', provider: 'OpenAI', accuracy: 95, latency: 1.8, cost: '$0.0075', score: 89.1 },
-  { name: 'Gemini 3 Pro', provider: 'Google', accuracy: 94, latency: 1.2, cost: '$0.0042', score: 88.7 },
-  { name: 'DeepSeek V3', provider: 'DeepSeek', accuracy: 92, latency: 2.4, cost: '$0.0014', score: 87.3 },
-  { name: 'Claude Haiku 4.5', provider: 'Anthropic', accuracy: 89, latency: 0.5, cost: '$0.0012', score: 86.1 },
-  { name: 'Mistral Large 2', provider: 'Mistral', accuracy: 90, latency: 1.7, cost: '$0.0036', score: 84.5 },
-  { name: 'GPT-4o Mini', provider: 'OpenAI', accuracy: 87, latency: 0.7, cost: '$0.0005', score: 83.9 },
-  { name: 'Qwen 3 72B', provider: 'Alibaba', accuracy: 90, latency: 2.1, cost: '$0.0016', score: 82.1 },
-  { name: 'Gemini 3 Flash', provider: 'Google', accuracy: 86, latency: 0.4, cost: '$0.0002', score: 81.4 },
-  { name: 'Llama 4 70B', provider: 'Meta', accuracy: 87, latency: 1.5, cost: '$0.0010', score: 80.2 },
+  { name: 'Gemini 3 Flash Preview', provider: 'Google', correct: 98, p95: 1.8, cost: '$0.0008' },
+  { name: 'Claude Sonnet 4.5', provider: 'Anthropic', correct: 96, p95: 2.1, cost: '$0.0052' },
+  { name: 'GPT-5.2', provider: 'OpenAI', correct: 96, p95: 2.5, cost: '$0.0058' },
+  { name: 'GPT-4o', provider: 'OpenAI', correct: 94, p95: 1.9, cost: '$0.0048' },
+  { name: 'Gemini 3 Pro', provider: 'Google', correct: 94, p95: 2.8, cost: '$0.0041' },
+  { name: 'Claude Opus 4.6', provider: 'Anthropic', correct: 92, p95: 4.2, cost: '$0.0180' },
+  { name: 'GPT-5 Nano', provider: 'OpenAI', correct: 88, p95: 0.9, cost: '$0.0003' },
+  { name: 'Llama 4 Scout', provider: 'Meta', correct: 82, p95: 1.4, cost: '$0.0004' },
 ]
 
 const ALL_MODELS = [
-  'GPT-5.2', 'GPT-4o', 'GPT-4o Mini', 'Claude Opus 4.6', 'Claude Sonnet 4.5',
-  'Claude Haiku 4.5', 'Gemini 3 Pro', 'Gemini 3 Flash', 'Gemini 3 Flash 8B',
-  'DeepSeek R1', 'DeepSeek V3', 'Mistral Large 2', 'Mistral Small',
-  'Llama 4 405B', 'Llama 4 70B', 'Llama 4 8B', 'Command R+', 'Qwen 3 72B',
-  'Phi-4', 'Nova Micro',
+  'GPT-5.2', 'GPT-4o', 'GPT-5 Nano', 'GPT-5 Image', 'Claude Opus 4.6',
+  'Claude Sonnet 4.5', 'Claude Haiku 4.5', 'Gemini 3 Pro', 'Gemini 3 Flash',
+  'Gemini 2.5 Flash Lite', 'Llama 4 Scout', 'Llama 4 Maverick', 'Mistral Small 3.2',
+  'Pixtral 12B', 'Nova Lite', 'Qwen3 VL 8B', 'Qwen2.5 VL 72B', 'Seed 1.6 Flash',
+  'InternVL3 78B', 'Gemma 3 27B',
 ]
 
-// Scene 1: Input (frames 0-90)
+// Scene 1: Upload Images + Expected JSON (frames 0-90)
 function InputScene() {
   const frame = useCurrentFrame()
-
-  const promptText = `Extract structured product data from the following product listing text. Return valid JSON matching this schema:
-{
-  "name": string,
-  "brand": string,
-  "price": number,
-  "category": string,
-  "features": string[]
-}`
-
-  const charsVisible = Math.min(Math.floor(frame * 3.5), promptText.length)
-  const visibleText = promptText.slice(0, charsVisible)
 
   const containerOpacity = interpolate(frame, [0, 10], [0, 1], { extrapolateRight: 'clamp' })
   const labelOpacity = interpolate(frame, [0, 8], [0, 1], { extrapolateRight: 'clamp' })
 
+  // Receipt icon appears
+  const receiptScale = interpolate(frame, [8, 18], [0, 1], { extrapolateRight: 'clamp' })
+
   const expectedText = `{
-  "name": "WH-1000XM5",
-  "brand": "Sony",
-  "price": 279.99,
-  "category": "Headphones"
+  "merchant": "Trader Joe's",
+  "date": "2026-02-08",
+  "items": [
+    {"name": "Organic Milk", "price": 5.49},
+    {"name": "Sourdough Bread", "price": 4.99},
+    {"name": "Avocados (3pk)", "price": 3.99}
+  ],
+  "tax": 2.74,
+  "total": 34.52
 }`
-  const expectedStart = 55
+  const expectedStart = 30
   const expectedChars = Math.max(0, Math.min(Math.floor((frame - expectedStart) * 4), expectedText.length))
   const expectedVisible = expectedText.slice(0, expectedChars)
-  const expectedLabelOp = interpolate(frame, [50, 55], [0, 1], { extrapolateRight: 'clamp' })
+  const expectedLabelOp = interpolate(frame, [25, 30], [0, 1], { extrapolateRight: 'clamp' })
 
   return (
     <AbsoluteFill style={{ background: VOID, padding: 48, fontFamily: 'Inter, system-ui, sans-serif' }}>
-      <div style={{ opacity: labelOpacity, fontSize: 14, color: TEXT_MUTED, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 8 }}>
-        YOUR PROMPT
-      </div>
-      <div style={{
-        opacity: containerOpacity,
-        background: SURFACE,
-        border: `1px solid ${BORDER}`,
-        borderRadius: 12,
-        padding: 20,
-        fontFamily: 'JetBrains Mono, monospace',
-        fontSize: 15,
-        color: TEXT,
-        lineHeight: 1.6,
-        whiteSpace: 'pre-wrap' as const,
-        minHeight: 160,
-      }}>
-        {visibleText}
-        {charsVisible < promptText.length && (
-          <span style={{ opacity: Math.sin(frame * 0.3) > 0 ? 1 : 0, color: EMBER }}>▌</span>
-        )}
-      </div>
+      <div style={{ display: 'flex', gap: 24 }}>
+        {/* Left: Upload */}
+        <div style={{ flex: 1 }}>
+          <div style={{ opacity: labelOpacity, fontSize: 14, color: TEXT_MUTED, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 8 }}>
+            📷 SAMPLE IMAGE
+          </div>
+          <div style={{
+            opacity: containerOpacity,
+            background: SURFACE,
+            border: `1px solid ${BORDER}`,
+            borderRadius: 12,
+            padding: 24,
+            display: 'flex',
+            flexDirection: 'column' as const,
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: 200,
+          }}>
+            <div style={{ fontSize: 64, transform: `scale(${receiptScale})` }}>🧾</div>
+            <div style={{
+              opacity: interpolate(frame, [18, 25], [0, 1], { extrapolateRight: 'clamp' }),
+              fontSize: 14,
+              color: TEXT_SEC,
+              fontFamily: 'JetBrains Mono, monospace',
+              marginTop: 8,
+            }}>receipt_001.jpg</div>
+            <div style={{
+              opacity: interpolate(frame, [20, 28], [0, 1], { extrapolateRight: 'clamp' }),
+              fontSize: 12,
+              color: TEXT_MUTED,
+              marginTop: 4,
+            }}>Trader Joe's — Feb 8, 2026</div>
+          </div>
+        </div>
 
-      <div style={{ opacity: expectedLabelOp, fontSize: 14, color: TEXT_MUTED, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginTop: 20, marginBottom: 8 }}>
-        EXPECTED OUTPUT
-      </div>
-      <div style={{
-        opacity: expectedLabelOp,
-        background: SURFACE,
-        border: `1px solid ${BORDER}`,
-        borderRadius: 12,
-        padding: 20,
-        fontFamily: 'JetBrains Mono, monospace',
-        fontSize: 15,
-        color: SUCCESS,
-        lineHeight: 1.6,
-        whiteSpace: 'pre-wrap' as const,
-        minHeight: 100,
-      }}>
-        {expectedVisible}
-        {expectedChars < expectedText.length && expectedChars > 0 && (
-          <span style={{ opacity: Math.sin(frame * 0.3) > 0 ? 1 : 0, color: EMBER }}>▌</span>
-        )}
+        {/* Right: Expected JSON */}
+        <div style={{ flex: 1 }}>
+          <div style={{ opacity: expectedLabelOp, fontSize: 14, color: TEXT_MUTED, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 8 }}>
+            ✅ EXPECTED JSON
+          </div>
+          <div style={{
+            opacity: expectedLabelOp,
+            background: SURFACE,
+            border: `1px solid ${BORDER}`,
+            borderRadius: 12,
+            padding: 20,
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: 13,
+            color: SUCCESS,
+            lineHeight: 1.6,
+            whiteSpace: 'pre-wrap' as const,
+            minHeight: 200,
+          }}>
+            {expectedVisible}
+            {expectedChars < expectedText.length && expectedChars > 0 && (
+              <span style={{ opacity: Math.sin(frame * 0.3) > 0 ? 1 : 0, color: EMBER }}>▌</span>
+            )}
+          </div>
+        </div>
       </div>
     </AbsoluteFill>
   )
@@ -121,12 +133,11 @@ function InputScene() {
 function ModelSelectionScene() {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
-  void fps
 
   return (
     <AbsoluteFill style={{ background: VOID, padding: 48, fontFamily: 'Inter, system-ui, sans-serif' }}>
       <div style={{ fontSize: 14, color: TEXT_MUTED, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 16 }}>
-        SELECTING MODELS
+        SELECTING VISION MODELS
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 10 }}>
         {ALL_MODELS.map((model, i) => {
@@ -142,7 +153,7 @@ function ModelSelectionScene() {
               border: `1px solid ${isChecked ? EMBER : BORDER}`,
               borderRadius: 8,
               padding: '10px 16px',
-              fontSize: 14,
+              fontSize: 13,
               color: isChecked ? TEXT : TEXT_SEC,
               fontWeight: 500,
               display: 'flex',
@@ -175,28 +186,32 @@ function ModelSelectionScene() {
         color: TEXT_SEC,
         opacity: interpolate(frame, [40, 50], [0, 1], { extrapolateRight: 'clamp' }),
       }}>
-        {Math.min(ALL_MODELS.length, Math.floor(frame / 2.5))} of {ALL_MODELS.length} models selected
+        {Math.min(ALL_MODELS.length, Math.floor(frame / 2.5))} of {ALL_MODELS.length} vision models selected · 50 runs each
       </div>
     </AbsoluteFill>
   )
 }
 
-// Scene 3: Processing (frames 150-250)
+// Scene 3: Processing (frames 150-270)
 function ProcessingScene() {
   const frame = useCurrentFrame()
-  const totalFrames = 100
+  const totalFrames = 120
   const modelsToShow = MODELS_DATA.slice(0, 8)
 
   const progress = interpolate(frame, [0, totalFrames - 10], [0, 100], { extrapolateRight: 'clamp' })
-  const modelsComplete = Math.min(20, Math.floor(frame / 4.5))
+  const modelsComplete = Math.min(20, Math.floor(frame / 5.5))
+  const runsComplete = Math.min(1000, Math.floor(frame * 9))
 
   return (
     <AbsoluteFill style={{ background: VOID, padding: 48, fontFamily: 'Inter, system-ui, sans-serif' }}>
       <div style={{ fontSize: 20, fontWeight: 600, color: TEXT, marginBottom: 4 }}>
         Running your benchmark...
       </div>
-      <div style={{ fontSize: 14, color: TEXT_SEC, marginBottom: 20 }}>
-        Testing model {Math.min(20, modelsComplete + 1)} of 20
+      <div style={{ fontSize: 14, color: TEXT_SEC, marginBottom: 6 }}>
+        Testing model {Math.min(20, modelsComplete + 1)} of 20 · {runsComplete} / 1,000 total runs
+      </div>
+      <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 16 }}>
+        50 runs per model for statistical significance
       </div>
 
       {/* Progress bar */}
@@ -214,16 +229,14 @@ function ProcessingScene() {
       {/* Model list */}
       <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
         {modelsToShow.map((model, i) => {
-          const modelFrame = i * 10
-          const isDone = frame > modelFrame + 12
+          const modelFrame = i * 12
+          const isDone = frame > modelFrame + 15
           const isRunning = frame > modelFrame && !isDone
 
           const rowStart = Math.max(0, modelFrame - 5)
           const rowEnd = Math.max(rowStart + 1, modelFrame)
           const rowOp = interpolate(frame, [rowStart, rowEnd], [0.4, 1], { extrapolateRight: 'clamp' })
-          const latStart = modelFrame
-          const latEnd = modelFrame + 12
-          const latencyDisplay = isDone ? `${model.latency}s` : isRunning ? `${(interpolate(frame, [latStart, latEnd], [0, model.latency], { extrapolateRight: 'clamp' })).toFixed(1)}s` : '...'
+          const runCount = isDone ? 50 : isRunning ? Math.min(50, Math.floor((frame - modelFrame) * 3.5)) : 0
 
           return (
             <div key={model.name} style={{
@@ -239,12 +252,12 @@ function ProcessingScene() {
               <span style={{ fontSize: 16 }}>
                 {isDone ? '✅' : isRunning ? '⏳' : '⬜'}
               </span>
-              <span style={{ color: TEXT, fontWeight: 500, width: 180 }}>{model.name}</span>
-              <span style={{ color: TEXT_MUTED, fontFamily: 'JetBrains Mono, monospace', fontSize: 13, width: 50 }}>
-                {latencyDisplay}
+              <span style={{ color: TEXT, fontWeight: 500, width: 200 }}>{model.name}</span>
+              <span style={{ color: TEXT_MUTED, fontFamily: 'JetBrains Mono, monospace', fontSize: 13, width: 70 }}>
+                {runCount}/50 runs
               </span>
               <span style={{ color: isDone ? SUCCESS : isRunning ? EMBER : TEXT_MUTED, fontSize: 12 }}>
-                {isDone ? 'Done' : isRunning ? 'Running' : 'Queued'}
+                {isDone ? `${model.correct}% correct` : isRunning ? 'Running...' : 'Queued'}
               </span>
             </div>
           )
@@ -254,7 +267,7 @@ function ProcessingScene() {
   )
 }
 
-// Scene 4: Results (frames 250-360)
+// Scene 4: Results (frames 270-400)
 function ResultsScene() {
   const frame = useCurrentFrame()
 
@@ -271,7 +284,7 @@ function ResultsScene() {
         border: `1px solid ${EMBER}`,
         borderRadius: 12,
         padding: '16px 20px',
-        marginBottom: 20,
+        marginBottom: 16,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -281,23 +294,23 @@ function ResultsScene() {
             🏆 RECOMMENDED
           </div>
           <div style={{ fontSize: 22, fontWeight: 700, color: TEXT, marginTop: 4 }}>
-            Claude Sonnet 4.5
+            Gemini 3 Flash Preview
           </div>
         </div>
         <div style={{ display: 'flex', gap: 24, fontSize: 14 }}>
           <div style={{ textAlign: 'center' as const }}>
-            <div style={{ color: TEXT_MUTED, fontSize: 11, fontWeight: 600, textTransform: 'uppercase' as const }}>Accuracy</div>
+            <div style={{ color: TEXT_MUTED, fontSize: 11, fontWeight: 600, textTransform: 'uppercase' as const }}>% Correct</div>
             <div style={{ color: SUCCESS, fontWeight: 700, fontSize: 20, fontFamily: 'JetBrains Mono, monospace' }}>
-              {Math.min(96, Math.round(interpolate(frame, [15, 40], [0, 96], { extrapolateRight: 'clamp' })))}
+              {Math.min(98, Math.round(interpolate(frame, [15, 40], [0, 98], { extrapolateRight: 'clamp' })))}%
             </div>
           </div>
           <div style={{ textAlign: 'center' as const }}>
-            <div style={{ color: TEXT_MUTED, fontSize: 11, fontWeight: 600, textTransform: 'uppercase' as const }}>Speed</div>
-            <div style={{ color: TEXT, fontWeight: 700, fontSize: 20, fontFamily: 'JetBrains Mono, monospace' }}>1.6s</div>
+            <div style={{ color: TEXT_MUTED, fontSize: 11, fontWeight: 600, textTransform: 'uppercase' as const }}>P95</div>
+            <div style={{ color: TEXT, fontWeight: 700, fontSize: 20, fontFamily: 'JetBrains Mono, monospace' }}>1.8s</div>
           </div>
           <div style={{ textAlign: 'center' as const }}>
-            <div style={{ color: TEXT_MUTED, fontSize: 11, fontWeight: 600, textTransform: 'uppercase' as const }}>Cost</div>
-            <div style={{ color: SUCCESS, fontWeight: 700, fontSize: 20, fontFamily: 'JetBrains Mono, monospace' }}>$0.0045</div>
+            <div style={{ color: TEXT_MUTED, fontSize: 11, fontWeight: 600, textTransform: 'uppercase' as const }}>Cost/Run</div>
+            <div style={{ color: SUCCESS, fontWeight: 700, fontSize: 20, fontFamily: 'JetBrains Mono, monospace' }}>$0.0008</div>
           </div>
         </div>
       </div>
@@ -315,12 +328,11 @@ function ResultsScene() {
           letterSpacing: '0.05em',
           color: TEXT_MUTED,
         }}>
-          <div style={{ width: 40 }}>#</div>
+          <div style={{ width: 36 }}>#</div>
           <div style={{ flex: 1 }}>Model</div>
-          <div style={{ width: 90, textAlign: 'center' as const }}>Accuracy</div>
-          <div style={{ width: 80, textAlign: 'center' as const }}>Speed</div>
-          <div style={{ width: 90, textAlign: 'right' as const }}>Cost/Query</div>
-          <div style={{ width: 70, textAlign: 'center' as const }}>Score</div>
+          <div style={{ width: 80, textAlign: 'center' as const }}>% Correct</div>
+          <div style={{ width: 70, textAlign: 'center' as const }}>P95</div>
+          <div style={{ width: 90, textAlign: 'right' as const }}>Cost/Run</div>
         </div>
 
         {MODELS_DATA.slice(0, 7).map((model, i) => {
@@ -329,7 +341,7 @@ function ResultsScene() {
           const rowY = interpolate(frame, [delay, delay + 8], [8, 0], { extrapolateRight: 'clamp' })
           const isWinner = i === 0
 
-          const scoreColor = model.score >= 88 ? SUCCESS : model.score >= 80 ? '#EAB308' : '#EF4444'
+          const correctColor = model.correct >= 95 ? SUCCESS : model.correct >= 90 ? '#EAB308' : DANGER
 
           return (
             <div key={model.name} style={{
@@ -343,48 +355,60 @@ function ResultsScene() {
               background: isWinner ? `${EMBER}08` : 'transparent',
               borderLeft: isWinner ? `3px solid ${EMBER}` : '3px solid transparent',
             }}>
-              <div style={{ width: 40, color: isWinner ? EMBER : TEXT_MUTED, fontWeight: 600 }}>
+              <div style={{ width: 36, color: isWinner ? EMBER : TEXT_MUTED, fontWeight: 600 }}>
                 {isWinner ? '🏆' : i + 1}
               </div>
               <div style={{ flex: 1 }}>
                 <span style={{ color: TEXT, fontWeight: 500 }}>{model.name}</span>
                 <span style={{ color: TEXT_MUTED, fontSize: 12, marginLeft: 8 }}>{model.provider}</span>
               </div>
-              <div style={{ width: 90, textAlign: 'center' as const }}>
+              <div style={{ width: 80, textAlign: 'center' as const }}>
                 <span style={{
-                  background: `${SUCCESS}20`,
-                  color: SUCCESS,
+                  background: `${correctColor}20`,
+                  color: correctColor,
                   borderRadius: 9999,
                   padding: '2px 8px',
                   fontSize: 12,
                   fontWeight: 600,
-                }}>{model.accuracy}</span>
+                }}>{model.correct}%</span>
               </div>
-              <div style={{ width: 80, textAlign: 'center' as const, fontFamily: 'JetBrains Mono, monospace', fontSize: 13, color: TEXT_SEC }}>
-                {model.latency}s
+              <div style={{ width: 70, textAlign: 'center' as const, fontFamily: 'JetBrains Mono, monospace', fontSize: 13, color: TEXT_SEC }}>
+                {model.p95}s
               </div>
               <div style={{ width: 90, textAlign: 'right' as const, fontFamily: 'JetBrains Mono, monospace', fontSize: 13, color: TEXT_SEC }}>
                 {model.cost}
-              </div>
-              <div style={{ width: 70, textAlign: 'center' as const }}>
-                <span style={{
-                  background: `${scoreColor}20`,
-                  color: scoreColor,
-                  borderRadius: 9999,
-                  padding: '2px 8px',
-                  fontSize: 12,
-                  fontWeight: 600,
-                }}>{model.score.toFixed(1)}</span>
               </div>
             </div>
           )
         })}
       </div>
 
+      {/* Error diff preview */}
+      <div style={{
+        opacity: interpolate(frame, [65, 80], [0, 1], { extrapolateRight: 'clamp' }),
+        marginTop: 12,
+        background: SURFACE,
+        border: `1px solid ${BORDER}`,
+        borderRadius: 8,
+        padding: '12px 16px',
+        fontSize: 12,
+        fontFamily: 'JetBrains Mono, monospace',
+      }}>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 8, fontFamily: 'Inter, system-ui, sans-serif' }}>
+          ⚠️ GPT-5 Nano — Where it missed
+        </div>
+        <div style={{ color: TEXT_MUTED }}>
+          <span style={{ color: DANGER, textDecoration: 'line-through' }}>"tax": 2.47</span>
+          {'  →  '}
+          <span style={{ color: SUCCESS }}>"tax": 2.74</span>
+          <span style={{ color: TEXT_MUTED, fontSize: 11 }}> (digit transposition)</span>
+        </div>
+      </div>
+
       {/* Savings callout */}
       <div style={{
-        opacity: interpolate(frame, [70, 85], [0, 1], { extrapolateRight: 'clamp' }),
-        marginTop: 16,
+        opacity: interpolate(frame, [80, 95], [0, 1], { extrapolateRight: 'clamp' }),
+        marginTop: 12,
         background: `${SUCCESS}10`,
         border: `1px solid ${SUCCESS}30`,
         borderRadius: 8,
@@ -395,7 +419,7 @@ function ResultsScene() {
         alignItems: 'center',
         gap: 8,
       }}>
-        💰 Switch from GPT-4o → save <strong style={{ fontWeight: 700 }}>$90/mo</strong> at 1,000 queries/day
+        💰 Switch from GPT-4o → save <strong style={{ fontWeight: 700 }}>$144/mo</strong> at 1,000 extractions/day
       </div>
     </AbsoluteFill>
   )
@@ -410,10 +434,10 @@ export const DemoVideo: React.FC = () => {
       <Sequence from={90} durationInFrames={60}>
         <ModelSelectionScene />
       </Sequence>
-      <Sequence from={150} durationInFrames={100}>
+      <Sequence from={150} durationInFrames={120}>
         <ProcessingScene />
       </Sequence>
-      <Sequence from={250} durationInFrames={110}>
+      <Sequence from={270} durationInFrames={130}>
         <ResultsScene />
       </Sequence>
     </AbsoluteFill>

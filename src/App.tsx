@@ -1,51 +1,63 @@
 import { useState } from 'react'
 import {
-  Zap, DollarSign, Target, BarChart3, Trophy, CheckCircle, Clock,
-  ChevronDown, ChevronUp, Menu, X, ArrowRight, Play, Shield, FileText
+  Zap, DollarSign, Target, Trophy, CheckCircle, Clock,
+  ChevronDown, ChevronUp, Menu, X, ArrowRight, Play, Shield, Upload,
+  AlertTriangle, Eye
 } from 'lucide-react'
 
 const MODELS = [
-  { rank: 1, model: 'Claude Sonnet 4.5', provider: 'Anthropic', accuracy: 96, speed: '1.6s', cost: '$0.0045', score: 94.2, winner: true },
-  { rank: 2, model: 'GPT-4o', provider: 'OpenAI', accuracy: 95, speed: '1.8s', cost: '$0.0075', score: 89.1, winner: false },
-  { rank: 3, model: 'Gemini 3 Pro', provider: 'Google', accuracy: 94, speed: '1.2s', cost: '$0.0042', score: 88.7, winner: false },
-  { rank: 4, model: 'DeepSeek V3', provider: 'DeepSeek', accuracy: 92, speed: '2.4s', cost: '$0.0014', score: 87.3, winner: false },
-  { rank: 5, model: 'Claude Haiku 4.5', provider: 'Anthropic', accuracy: 89, speed: '0.5s', cost: '$0.0012', score: 86.1, winner: false },
+  { rank: 1, model: 'Gemini 3 Flash Preview', provider: 'Google', correct: 98, p95: '1.8s', p99: '2.4s', ttft: '0.3s', cost: '$0.0008', winner: true },
+  { rank: 2, model: 'Claude Sonnet 4.5', provider: 'Anthropic', correct: 96, p95: '2.1s', p99: '3.0s', ttft: '0.4s', cost: '$0.0052', winner: false },
+  { rank: 3, model: 'GPT-5.2', provider: 'OpenAI', correct: 96, p95: '2.5s', p99: '3.8s', ttft: '0.5s', cost: '$0.0058', winner: false },
+  { rank: 4, model: 'GPT-4o', provider: 'OpenAI', correct: 94, p95: '1.9s', p99: '2.6s', ttft: '0.3s', cost: '$0.0048', winner: false },
+  { rank: 5, model: 'Gemini 3 Pro', provider: 'Google', correct: 94, p95: '2.8s', p99: '4.1s', ttft: '0.6s', cost: '$0.0041', winner: false },
+  { rank: 6, model: 'Claude Opus 4.6', provider: 'Anthropic', correct: 92, p95: '4.2s', p99: '5.8s', ttft: '0.8s', cost: '$0.0180', winner: false },
+  { rank: 7, model: 'GPT-5 Nano', provider: 'OpenAI', correct: 88, p95: '0.9s', p99: '1.2s', ttft: '0.2s', cost: '$0.0003', winner: false },
+  { rank: 8, model: 'Llama 4 Scout', provider: 'Meta', correct: 82, p95: '1.4s', p99: '2.0s', ttft: '0.3s', cost: '$0.0004', winner: false },
 ]
 
 const FAQS = [
   {
     q: 'How does accuracy scoring work?',
-    a: 'We use embedding-based semantic similarity to compare model outputs against your expected output. For JSON, we also check schema compliance and data extraction accuracy.'
+    a: 'We compare each model\'s JSON output field-by-field against your expected output. A run only counts as "correct" if every field matches exactly. No fuzzy scoring — it either nailed it or it didn\'t.'
   },
   {
     q: 'Which models do you test?',
-    a: '20+ models from OpenAI, Anthropic, Google, Meta, Mistral, DeepSeek, Cohere, and more — spanning every price tier from $0.0001 to $0.06 per 1K tokens.'
+    a: '20 vision models from 9 providers: GPT-5.2, GPT-4o, GPT-5 Nano, GPT-5 Image (OpenAI), Claude Opus 4.6, Claude Sonnet 4.5, Claude Haiku 4.5 (Anthropic), Gemini 3 Pro, Gemini 3 Flash, Gemini 2.5 Flash Lite (Google), Llama 4 Scout, Llama 4 Maverick (Meta), Mistral Small 3.2, Pixtral 12B (Mistral), Nova Lite (Amazon), Qwen3 VL 8B, Qwen2.5 VL 72B (Qwen), Seed 1.6 Flash (ByteDance), InternVL3 78B, Gemma 3 27B (Google).'
   },
   {
     q: 'How long does a benchmark take?',
-    a: 'Usually 2-4 minutes depending on prompt length and model response times. We run each model 3 times for consistency.'
+    a: 'About 8-12 minutes. We run each model 50 times to give you statistically reliable results.'
+  },
+  {
+    q: 'What file types can I upload?',
+    a: 'Images (JPEG, PNG, WebP), PDFs, and scanned documents. If a vision model can read it, we can test it.'
+  },
+  {
+    q: 'Why 50 runs per model?',
+    a: 'LLMs are non-deterministic. Running once tells you nothing about reliability. 50 runs gives you a true accuracy percentage you can trust for production decisions.'
+  },
+  {
+    q: 'What structured formats are supported?',
+    a: 'JSON is our primary format. We\'re adding CSV, XML, and custom schema validation soon.'
   },
   {
     q: 'Do I need an API key?',
-    a: 'Nope. We handle everything. Just paste your prompt and pay.'
+    a: 'Nope. We handle everything. Just upload your images and pay.'
   },
   {
-    q: 'Can I test multimodal prompts?',
-    a: 'Not yet — text-only for now. Multimodal and image prompts are coming soon.'
+    q: 'Is my data private?',
+    a: 'Your images and data are only used for benchmarking and deleted after 30 days. We never train on your data or share it.'
   },
   {
     q: 'What if I\'m not satisfied?',
     a: 'If we fail to deliver your report, full refund. No questions asked.'
   },
-  {
-    q: 'Is my prompt data private?',
-    a: 'Your prompts are only used for benchmarking and deleted after 30 days. We never train on your data or share it.'
-  },
 ]
 
-function ScoreBadge({ score }: { score: number }) {
-  const color = score >= 80 ? 'bg-success/15 text-success' : score >= 50 ? 'bg-warning/15 text-warning' : 'bg-danger/15 text-danger'
-  return <span className={`${color} rounded-full px-2 py-0.5 text-xs font-semibold`}>{score}</span>
+function CorrectBadge({ pct }: { pct: number }) {
+  const color = pct >= 95 ? 'bg-success/15 text-success' : pct >= 90 ? 'bg-success/15 text-success' : pct >= 85 ? 'bg-warning/15 text-warning' : 'bg-danger/15 text-danger'
+  return <span className={`${color} rounded-full px-2 py-0.5 text-xs font-semibold`}>{pct}%</span>
 }
 
 function FAQItem({ q, a }: { q: string; a: string }) {
@@ -57,6 +69,57 @@ function FAQItem({ q, a }: { q: string; a: string }) {
         {open ? <ChevronUp className="shrink-0 text-text-muted" size={20} /> : <ChevronDown className="shrink-0 text-text-muted" size={20} />}
       </button>
       {open && <p className="pb-5 text-text-secondary leading-relaxed">{a}</p>}
+    </div>
+  )
+}
+
+function WhereItMissed() {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="mt-8 mx-auto max-w-3xl">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between rounded-xl border border-surface-border bg-surface p-5 hover:bg-surface-raised transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <AlertTriangle size={20} className="text-warning" />
+          <div className="text-left">
+            <div className="font-semibold text-text-primary">Where GPT-5 Nano missed (88% correct)</div>
+            <div className="text-sm text-text-muted mt-0.5">See exactly which fields it got wrong</div>
+          </div>
+        </div>
+        {open ? <ChevronUp className="text-text-muted" size={20} /> : <ChevronDown className="text-text-muted" size={20} />}
+      </button>
+      {open && (
+        <div className="mt-2 rounded-xl border border-surface-border bg-surface p-6 overflow-x-auto">
+          <p className="text-sm text-text-secondary mb-4">6 of 50 runs had errors. Here's a typical failure:</p>
+          <div className="font-mono text-sm leading-relaxed space-y-1">
+            <div className="text-text-muted">{'{'}</div>
+            <div className="text-text-muted pl-4">{'"merchant":'} <span className="text-text-secondary">"Trader Joe's",</span></div>
+            <div className="pl-4 flex items-start gap-2 flex-wrap">
+              <span className="text-text-muted">{'"merchant":'}</span>
+              <span className="text-red-400 line-through">"Trader Joes"</span>
+              <span className="text-green-400">"Trader Joe's"</span>
+              <span className="ml-2 text-xs text-red-400 bg-red-400/10 rounded px-1.5 py-0.5">missing apostrophe</span>
+            </div>
+            <div className="text-text-muted pl-4">{'"date":'} <span className="text-text-secondary">"2026-02-08",</span></div>
+            <div className="text-text-muted pl-4">{'"items":'} <span className="text-text-secondary">[...],</span></div>
+            <div className="pl-4 flex items-start gap-2 flex-wrap">
+              <span className="text-text-muted">{'"tax":'}</span>
+              <span className="text-red-400 line-through">2.47</span>
+              <span className="text-green-400">2.74</span>
+              <span className="ml-2 text-xs text-red-400 bg-red-400/10 rounded px-1.5 py-0.5">digit transposition</span>
+            </div>
+            <div className="text-text-muted pl-4">{'"total":'} <span className="text-text-secondary">34.52</span></div>
+            <div className="text-text-muted">{'}'}</div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-surface-border">
+            <p className="text-sm text-text-muted">
+              This is what "88% correct" looks like — the model gets <em>most</em> fields right, but transposes digits and drops punctuation under pressure. For production receipt parsing, that 12% failure rate means ~120 bad extractions per 1,000.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -102,20 +165,20 @@ export default function App() {
         <div className="relative mx-auto max-w-[1200px] px-4 pt-20 pb-16 md:px-6 md:pt-28 md:pb-24">
           <div className="mx-auto max-w-3xl text-center">
             <h1 className="text-4xl font-bold leading-[1.1] tracking-tight md:text-[56px] lg:text-[64px]">
-              Stop overpaying for AI.
+              Find the best vision model for your data extraction.
             </h1>
             <p className="mt-6 text-lg leading-relaxed text-text-secondary md:text-xl">
-              Test your prompt against 20+ models. Get a ranked report with cost, speed, and accuracy scores. One report. Ten bucks.
+              Upload your images. Define your schema. We test 20 vision models, 50 times each. Get exact-match accuracy, latency, and cost — for receipts, invoices, documents, and forms.
             </p>
             <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
               <a href="#cta" className="inline-flex items-center gap-2 rounded-lg bg-ember px-6 py-3.5 text-base font-semibold text-white hover:bg-orange-600 transition-colors shadow-lg shadow-ember/20">
-                Run a Benchmark — $9.99 <ArrowRight size={18} />
+                Run a Benchmark — $14.99 <ArrowRight size={18} />
               </a>
               <a href="#how" className="inline-flex items-center gap-2 rounded-lg border border-surface-border px-6 py-3.5 text-base font-semibold text-text-secondary hover:bg-surface-raised hover:text-text-primary transition-colors">
                 See how it works
               </a>
             </div>
-            <p className="mt-6 text-sm text-text-muted">No API keys needed · Results in 3 minutes · No account required</p>
+            <p className="mt-6 text-sm text-text-muted">No API keys needed · Results in ~10 minutes · No account required</p>
           </div>
 
           {/* Demo Video */}
@@ -145,12 +208,12 @@ export default function App() {
       <section id="how" className="border-t border-surface-border bg-surface/50">
         <div className="mx-auto max-w-[1200px] px-4 py-16 md:px-6 md:py-24">
           <h2 className="text-center text-3xl font-semibold tracking-tight md:text-4xl">How it works</h2>
-          <p className="mt-4 text-center text-text-secondary">Three steps. Three minutes. Done.</p>
+          <p className="mt-4 text-center text-text-secondary">Three steps. Ten minutes. Done.</p>
           <div className="mt-12 grid gap-8 md:grid-cols-3 md:gap-12">
             {[
-              { icon: <FileText size={28} />, step: '1', title: 'Paste Your Prompt', desc: 'Drop in your system prompt, example input, and expected output. That\'s it.' },
-              { icon: <Play size={28} />, step: '2', title: 'We Test 20+ Models', desc: 'Your prompt runs against models from OpenAI, Anthropic, Google, Meta, Mistral & more.' },
-              { icon: <Trophy size={28} />, step: '3', title: 'Get Your Report', desc: 'Ranked results with cost, speed, and accuracy scores. Plus our recommendation.' },
+              { icon: <Upload size={28} />, step: '1', title: 'Upload Your Data', desc: 'Upload 3 sample images (receipts, invoices, documents) and the correct JSON representation of each.' },
+              { icon: <Play size={28} />, step: '2', title: 'We Test 20 Vision Models', desc: 'Each model processes your images 50 times. We measure exact-match accuracy, latency, and cost.' },
+              { icon: <Trophy size={28} />, step: '3', title: 'Get Your Report', desc: 'See which models get it right, where they miss, and what they cost. Plus our recommendation.' },
             ].map(({ icon, step, title, desc }) => (
               <div key={step} className="relative text-center">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-ember/10 text-ember">{icon}</div>
@@ -167,58 +230,90 @@ export default function App() {
       <section className="border-t border-surface-border">
         <div className="mx-auto max-w-[1200px] px-4 py-16 md:px-6 md:py-24">
           <h2 className="text-center text-3xl font-semibold tracking-tight md:text-4xl">See a real report</h2>
-          <p className="mt-4 text-center text-text-secondary">From a JSON data extraction benchmark</p>
+          <p className="mt-4 text-center text-text-secondary">Receipt Data Extraction — 20 vision models, 50 runs each</p>
+
+          {/* Input Example */}
+          <div className="mt-12 mx-auto max-w-3xl grid gap-4 md:grid-cols-2">
+            <div className="rounded-xl border border-surface-border bg-surface p-5">
+              <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">📷 Input Image</div>
+              <div className="rounded-lg bg-surface-raised border border-surface-border p-4 text-center">
+                <div className="text-4xl mb-2">🧾</div>
+                <div className="text-sm text-text-secondary font-mono">receipt_001.jpg</div>
+                <div className="text-xs text-text-muted mt-1">Trader Joe's — Feb 8, 2026</div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-surface-border bg-surface p-5">
+              <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">✅ Expected JSON</div>
+              <pre className="rounded-lg bg-surface-raised border border-surface-border p-4 text-xs font-mono text-green-400 leading-relaxed overflow-x-auto">{`{
+  "merchant": "Trader Joe's",
+  "date": "2026-02-08",
+  "items": [
+    {"name": "Organic Milk", "price": 5.49},
+    {"name": "Sourdough Bread", "price": 4.99},
+    {"name": "Avocados (3pk)", "price": 3.99}
+  ],
+  "tax": 2.74,
+  "total": 34.52
+}`}</pre>
+            </div>
+          </div>
 
           {/* Recommendation Card */}
-          <div className="mt-12 mx-auto max-w-2xl rounded-xl border border-ember bg-surface p-6 md:p-8 shadow-[0_0_30px_rgba(249,115,22,0.08)]">
+          <div className="mt-10 mx-auto max-w-2xl rounded-xl border border-ember bg-surface p-6 md:p-8 shadow-[0_0_30px_rgba(249,115,22,0.08)]">
             <div className="flex items-center gap-2 text-sm font-semibold text-ember uppercase tracking-wider">
               <Trophy size={16} /> Our Recommendation
             </div>
-            <h3 className="mt-3 text-2xl font-semibold">Claude Sonnet 4.5</h3>
+            <h3 className="mt-3 text-2xl font-semibold">Gemini 3 Flash Preview</h3>
             <div className="mt-4 flex flex-wrap gap-4 text-sm">
-              <span className="flex items-center gap-1.5"><Target size={14} className="text-success" /> 96/100 accuracy</span>
-              <span className="flex items-center gap-1.5"><Zap size={14} className="text-ember-light" /> 1.6s latency</span>
-              <span className="flex items-center gap-1.5"><DollarSign size={14} className="text-success" /> $0.0045/query</span>
+              <span className="flex items-center gap-1.5"><Target size={14} className="text-success" /> 98% correct</span>
+              <span className="flex items-center gap-1.5"><Zap size={14} className="text-ember-light" /> P95: 1.8s</span>
+              <span className="flex items-center gap-1.5"><DollarSign size={14} className="text-success" /> $0.0008/run</span>
             </div>
             <p className="mt-4 text-text-secondary leading-relaxed">
-              For this JSON extraction prompt, Claude Sonnet 4.5 offers the best balance of accuracy and cost. It scores 96% at less than half the cost of GPT-4o.
+              Gemini 3 Flash Preview achieves 98% exact-match accuracy at just $0.0008/run — 6.5x cheaper than GPT-4o with higher accuracy. At 1,000 extractions/day, that saves you $144/month.
             </p>
             <div className="mt-4 flex items-center gap-2 rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
               <DollarSign size={16} />
-              <span>Switch from GPT-4o → save <strong>$90/mo</strong> at 1,000 queries/day</span>
+              <span>Switch from GPT-4o → save <strong>$144/mo</strong> at 1,000 extractions/day</span>
             </div>
           </div>
 
           {/* Ranked Table */}
-          <div className="mt-8 mx-auto max-w-3xl overflow-x-auto">
+          <div className="mt-8 mx-auto max-w-4xl overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-surface-border text-xs font-semibold uppercase tracking-wider text-text-muted">
                   <th className="px-3 py-3 text-left">Rank</th>
                   <th className="px-3 py-3 text-left">Model</th>
-                  <th className="px-3 py-3 text-left">Provider</th>
-                  <th className="px-3 py-3 text-center">Accuracy</th>
-                  <th className="px-3 py-3 text-center">Speed</th>
-                  <th className="px-3 py-3 text-right">Cost/Query</th>
-                  <th className="px-3 py-3 text-center">Score</th>
+                  <th className="px-3 py-3 text-center">% Correct</th>
+                  <th className="px-3 py-3 text-center">P95</th>
+                  <th className="px-3 py-3 text-center">P99</th>
+                  <th className="px-3 py-3 text-center">TTFT</th>
+                  <th className="px-3 py-3 text-right">Cost/Run</th>
                 </tr>
               </thead>
               <tbody>
                 {MODELS.map((m) => (
                   <tr key={m.rank} className={`border-b border-surface-border transition-colors hover:bg-surface-raised ${m.winner ? 'bg-ember/5 border-l-2 border-l-ember' : ''}`}>
                     <td className="px-3 py-3 text-text-muted">{m.winner ? <Trophy size={16} className="text-ember" /> : m.rank}</td>
-                    <td className="px-3 py-3 font-medium">{m.model}</td>
-                    <td className="px-3 py-3 text-text-secondary">{m.provider}</td>
-                    <td className="px-3 py-3 text-center"><ScoreBadge score={m.accuracy} /></td>
-                    <td className="px-3 py-3 text-center font-mono text-text-secondary">{m.speed}</td>
+                    <td className="px-3 py-3">
+                      <span className="font-medium">{m.model}</span>
+                      <span className="ml-2 text-text-muted text-xs">{m.provider}</span>
+                    </td>
+                    <td className="px-3 py-3 text-center"><CorrectBadge pct={m.correct} /></td>
+                    <td className="px-3 py-3 text-center font-mono text-text-secondary">{m.p95}</td>
+                    <td className="px-3 py-3 text-center font-mono text-text-secondary">{m.p99}</td>
+                    <td className="px-3 py-3 text-center font-mono text-text-secondary">{m.ttft}</td>
                     <td className="px-3 py-3 text-right font-mono text-text-secondary">{m.cost}</td>
-                    <td className="px-3 py-3 text-center"><ScoreBadge score={Math.round(m.score)} /></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <p className="mt-6 text-center text-sm text-text-muted">Showing top 5 of 20 models tested</p>
+          <p className="mt-6 text-center text-sm text-text-muted">Showing top 8 of 20 models tested · 50 runs each</p>
+
+          {/* Where It Missed */}
+          <WhereItMissed />
         </div>
       </section>
 
@@ -226,13 +321,13 @@ export default function App() {
       <section className="border-t border-surface-border bg-surface/50">
         <div className="mx-auto max-w-[1200px] px-4 py-16 md:px-6 md:py-24">
           <h2 className="text-center text-3xl font-semibold tracking-tight md:text-4xl">What we test</h2>
-          <p className="mt-4 text-center text-text-secondary">Every dimension that matters for your use case</p>
+          <p className="mt-4 text-center text-text-secondary">Every dimension that matters for structured data extraction</p>
           <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { icon: <Target size={24} />, title: 'Accuracy', desc: 'Semantic similarity to your expected output. JSON schema compliance. Format matching.' },
-              { icon: <Zap size={24} />, title: 'Speed', desc: 'Time to first token. Total response time. Tokens per second across 3 runs.' },
-              { icon: <DollarSign size={24} />, title: 'Cost', desc: 'Actual dollar cost per query. Monthly projection at your volume.' },
-              { icon: <BarChart3 size={24} />, title: 'Consistency', desc: 'Run 3x per model. Measure variance. Flag unreliable models.' },
+              { icon: <Target size={24} />, title: 'Exact-Match Accuracy', desc: 'Does the model get it 100% right? We check field-by-field against your expected output across 50 runs.' },
+              { icon: <Zap size={24} />, title: 'Latency', desc: 'P95 and P99 response times. Time to first token. Because averages lie.' },
+              { icon: <DollarSign size={24} />, title: 'Cost Per Run', desc: 'Actual dollar cost from OpenRouter. Monthly projection at your volume.' },
+              { icon: <Eye size={24} />, title: 'Error Analysis', desc: 'When a model fails, we show you exactly which fields it got wrong and how.' },
             ].map(({ icon, title, desc }) => (
               <div key={title} className="rounded-xl border border-surface-border bg-surface p-6 transition-all hover:translate-y-[-2px] hover:shadow-lg hover:shadow-black/20">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-ember/10 text-ember">{icon}</div>
@@ -247,17 +342,17 @@ export default function App() {
       {/* Models Tested */}
       <section className="border-t border-surface-border">
         <div className="mx-auto max-w-[1200px] px-4 py-16 md:px-6 md:py-24">
-          <h2 className="text-center text-3xl font-semibold tracking-tight md:text-4xl">20+ models tested</h2>
-          <p className="mt-4 text-center text-text-secondary">Every price tier — from $0.0001 to $0.06 per 1K tokens</p>
+          <h2 className="text-center text-3xl font-semibold tracking-tight md:text-4xl">20 vision models tested</h2>
+          <p className="mt-4 text-center text-text-secondary">Every vision-capable model worth considering — from $0.0003 to $0.018 per run</p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4 md:gap-6">
-            {['OpenAI', 'Anthropic', 'Google', 'Meta', 'Mistral', 'DeepSeek', 'Cohere', 'Alibaba', 'Microsoft', 'Amazon'].map((p) => (
+            {['OpenAI', 'Anthropic', 'Google', 'Meta', 'Mistral', 'Amazon', 'Qwen', 'ByteDance', 'Baidu'].map((p) => (
               <div key={p} className="rounded-full border border-surface-border bg-surface px-5 py-2.5 text-sm font-medium text-text-secondary">
                 {p}
               </div>
             ))}
           </div>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-2 text-xs text-text-muted">
-            {['GPT-5.2', 'GPT-4o', 'GPT-4o Mini', 'Claude Opus 4.6', 'Claude Sonnet 4.5', 'Claude Haiku 4.5', 'Gemini 3 Pro', 'Gemini 3 Flash', 'Gemini 3 Flash 8B', 'DeepSeek R1', 'DeepSeek V3', 'Mistral Large 2', 'Mistral Small', 'Llama 4 405B', 'Llama 4 70B', 'Llama 4 8B', 'Command R+', 'Qwen 3 72B', 'Phi-4', 'Nova Micro'].map((m) => (
+            {['GPT-5.2', 'GPT-4o', 'GPT-5 Nano', 'GPT-5 Image', 'Claude Opus 4.6', 'Claude Sonnet 4.5', 'Claude Haiku 4.5', 'Gemini 3 Pro', 'Gemini 3 Flash', 'Gemini 2.5 Flash Lite', 'Llama 4 Scout', 'Llama 4 Maverick', 'Mistral Small 3.2', 'Pixtral 12B', 'Nova Lite', 'Qwen3 VL 8B', 'Qwen2.5 VL 72B', 'Seed 1.6 Flash', 'InternVL3 78B', 'Gemma 3 27B'].map((m) => (
               <span key={m} className="rounded-md bg-surface-raised px-2 py-1">{m}</span>
             ))}
           </div>
@@ -268,22 +363,22 @@ export default function App() {
       <section id="pricing" className="border-t border-surface-border bg-surface/50">
         <div className="mx-auto max-w-[1200px] px-4 py-16 md:px-6 md:py-24">
           <h2 className="text-center text-3xl font-semibold tracking-tight md:text-4xl">Simple pricing</h2>
-          <p className="mt-4 text-center text-text-secondary">Spend $10, save $200/mo. No subscriptions required.</p>
+          <p className="mt-4 text-center text-text-secondary">Spend $15, save $144/mo. No subscriptions required.</p>
 
           <div className="mt-12 mx-auto max-w-sm">
             <div className="rounded-xl border border-ember bg-surface p-8 text-center shadow-[0_0_40px_rgba(249,115,22,0.08)]">
               <p className="text-sm font-semibold uppercase tracking-wider text-ember">One Report</p>
-              <div className="mt-3 text-5xl font-bold">$9.99</div>
+              <div className="mt-3 text-5xl font-bold">$14.99</div>
               <p className="mt-2 text-sm text-text-muted">per benchmark report</p>
               <ul className="mt-6 space-y-3 text-left text-sm">
                 {[
-                  '20+ models tested',
-                  '3 runs per model for consistency',
-                  'Accuracy scoring vs your expected output',
-                  'Cost & latency data',
-                  'Top recommendation with explanation',
-                  'Shareable link',
-                  'PDF export',
+                  '20 vision models tested',
+                  '50 runs per model for statistical significance',
+                  'Exact-match accuracy scoring',
+                  'P95/P99 latency data',
+                  'Error analysis — see where models fail',
+                  'Cost comparison at your volume',
+                  'Shareable link & PDF export',
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2">
                     <CheckCircle size={16} className="mt-0.5 shrink-0 text-success" />
@@ -296,7 +391,7 @@ export default function App() {
               </a>
             </div>
             <p className="mt-6 text-center text-sm text-text-muted">
-              Coming soon: $19/mo for monthly re-benchmarking
+              Coming soon: $29/mo for monthly re-benchmarking
             </p>
           </div>
         </div>
@@ -307,8 +402,8 @@ export default function App() {
         <div className="mx-auto max-w-[1200px] px-4 py-16 md:px-6 md:py-20">
           <div className="grid gap-8 md:grid-cols-3 text-center">
             {[
-              { icon: <Shield size={28} />, title: 'Data stays private', desc: 'Prompts deleted after 30 days. We never train on or share your data.' },
-              { icon: <Clock size={28} />, title: 'Results in 3 minutes', desc: 'No setup, no CLI, no YAML configs. Just paste and go.' },
+              { icon: <Shield size={28} />, title: 'Data stays private', desc: 'Images deleted after 30 days. We never train on or share your data.' },
+              { icon: <Clock size={28} />, title: 'Results in ~10 minutes', desc: 'No setup, no CLI, no YAML configs. Upload images and go.' },
               { icon: <DollarSign size={28} />, title: 'Money-back guarantee', desc: 'If we fail to deliver your report, full refund. No questions asked.' },
             ].map(({ icon, title, desc }) => (
               <div key={title}>
@@ -335,13 +430,13 @@ export default function App() {
       <section id="cta" className="border-t border-surface-border">
         <div className="mx-auto max-w-[1200px] px-4 py-16 md:px-6 md:py-24 text-center">
           <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
-            You're probably overpaying for GPT-4o.
+            You're probably overpaying for GPT-4o to parse receipts.
           </h2>
           <p className="mt-4 text-lg text-text-secondary">Let's find out.</p>
           <a href="#" className="mt-8 inline-flex items-center gap-2 rounded-lg bg-ember px-8 py-4 text-lg font-semibold text-white hover:bg-orange-600 transition-colors shadow-lg shadow-ember/20">
-            Run a Benchmark — $9.99 <ArrowRight size={20} />
+            Run a Benchmark — $14.99 <ArrowRight size={20} />
           </a>
-          <p className="mt-6 text-sm text-text-muted">20 models · 3 runs each · results in ~3 minutes</p>
+          <p className="mt-6 text-sm text-text-muted">20 vision models · 50 runs each · exact-match accuracy</p>
         </div>
       </section>
 
